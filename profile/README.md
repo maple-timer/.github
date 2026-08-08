@@ -15,9 +15,11 @@ Maple Timer는 메이플스토리 플레이 화면을 **브라우저 안에서 �
   있어, 저사양·CPU 모드 환경에서도 정밀 감지를 사용할 수 있습니다.
 - 설치가 필요 없는 웹앱으로, 브라우저 탭 하나로 동작합니다.
 
-## 영상
+## 시연
 
-https://github.com/user-attachments/assets/84975d67-0301-4757-a4f9-7913a1ad0d07
+![Maple Timer 시연](https://github.com/maple-timer/.github/raw/main/profile/demo.webp)
+
+> 원본 영상: [demo.mp4](https://github.com/maple-timer/.github/raw/main/profile/demo.mp4)
 
 ## 성과
 
@@ -56,18 +58,71 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    U["User Browser"] -->|static hosting| CF["Cloudflare Pages<br/>maple-timer.com"]
-    U -->|"Remote Recognition"| GW["API Gateway<br/>Node · Docker blue/green<br/>seat-based node assignment"]
-    GW --> NA["Native Node 1<br/>Mac Studio · CoreML"]
-    GW --> NB["Native Node 2<br/>Mac mini · CoreML"]
-    DC["Discord Bot<br/>Workers · D1"] -.->|"invite codes · patch notes"| U
-    AD["Feedback Desk<br/>admin web"] -.->|"inquiries · notices"| U
-    OBS["Grafana · Loki · Alloy"] -.->|observability| GW
+    subgraph CLIENT["Client"]
+        USER["User"] --> APP["Maple Timer Web App<br/>on-device recognition"]
+    end
+
+    subgraph CF["Cloudflare"]
+        PAGES["Pages<br/>maple-timer.com"]
+        FN["Pages Functions<br/>report API"]
+        BOT["Workers<br/>Discord Bot"]
+        D1[("D1")]
+        TUNNEL["Tunnel"]
+    end
+
+    subgraph STUDIO["Mac Studio"]
+        subgraph BG["Docker — blue/green"]
+            RT["Router"] --> GW["API Gateway<br/>seat-based node assignment"]
+        end
+        subgraph SLOTS_S["Native service — launchd a/b slots"]
+            SA["slot a<br/>CoreML parser"]
+            SB["slot b<br/>CoreML parser"]
+        end
+        subgraph MON["Monitoring"]
+            ALLOY1["Alloy"] --> LOKI["Loki"]
+            PROM["Prometheus"] --> GRAF["Grafana"]
+            LOKI --> GRAF
+        end
+    end
+
+    subgraph MINI["Mac mini"]
+        subgraph SLOTS_M["Native service — launchd a/b slots"]
+            MA["slot a<br/>CoreML parser"]
+            MB["slot b<br/>CoreML parser"]
+        end
+        ALLOY2["Alloy"]
+    end
+
+    DISCORD["Discord Community"]
+
+    APP -->|"load app & ONNX models"| PAGES
+    APP -->|"send reports"| FN
+    APP -->|"remote frames · VP8 1 Hz"| TUNNEL
+    TUNNEL --> RT
+    GW -->|"admit & infer<br/>(active generation)"| SLOTS_S
+    GW -->|"admit & infer<br/>via SSH tunnel"| SLOTS_M
+    BOT --> D1
+    BOT -->|"issue invite codes<br/>publish patch notes"| DISCORD
+    BOT -.->|"poll release feed"| PAGES
+    ALLOY2 -.->|"ship event logs<br/>via SSH tunnel"| LOKI
+    PROM -.->|scrape| GW
+
+    classDef clientZone stroke:#1d6ff2,stroke-width:2px,fill:none
+    classDef cfZone stroke:#f38020,stroke-width:2px,fill:none
+    classDef studioZone stroke:#2da44e,stroke-width:2px,fill:none
+    classDef miniZone stroke:#8250df,stroke-width:2px,fill:none
+    class CLIENT clientZone
+    class CF cfZone
+    class STUDIO studioZone
+    class MINI miniZone
 ```
 
 - 원격 인식은 무거운 parser 연산만 전용 서버로 오프로드하는 선택
-  기능입니다(초대 코드 기반). 네이티브 노드는 a/b 두 세대를 함께 띄워 **무중단 롤링
-  업데이트**로 교체됩니다.
+  기능입니다(초대 코드 기반). 게이트웨이는 각 노드의 실시간 좌석
+  현황을 보고 배정하며, 노드마다 a/b 두 세대를 함께 띄워 **무중단
+  롤링 업데이트**로 교체합니다.
+- 두 노드의 이벤트 로그는 Alloy가 라벨을 정제해 Loki로 모으고,
+  Grafana 대시보드에서 함께 조회합니다.
 
 ## 주요 기능 요약
 
