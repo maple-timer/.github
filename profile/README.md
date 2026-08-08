@@ -11,6 +11,8 @@ Maple Timer는 메이플스토리 플레이 화면을 **브라우저 안에서 �
   메모리, 패킷, 키보드/마우스 입력에는 일절 접근하지 않습니다.
 - 모든 감지 모델(YOLO 버프 감지, CNN 룬 감지, 숫자 OCR)은 직접 수집·학습한
   자체 모델이며, 기본 동작은 **온디바이스**(WebGPU/WASM)로 실행됩니다.
+- 무거운 parser 연산은 **원격 인식**으로 전용 추론 서버에 오프로드할 수
+  있어, 저사양·CPU 모드 환경에서도 정밀 감지를 사용할 수 있습니다.
 - 설치가 필요 없는 웹앱으로, 브라우저 탭 하나로 동작합니다.
 
 ## 시연
@@ -34,18 +36,18 @@ Maple Timer는 메이플스토리 플레이 화면을 **브라우저 안에서 �
 
 ```mermaid
 flowchart LR
-    subgraph B["브라우저 (온디바이스)"]
+    subgraph B["Browser (on-device)"]
         direction LR
-        C["화면 공유<br/>영역 선택 · 뷰포트 보정"] --> S["기능별 프레임 샘플링<br/>(초 단위 루프)"]
-        S --> W1["버프칸 파이프라인<br/>YOLO 감지 → 딥 매처"]
-        S --> W2["룬 감지<br/>CNN 캐스케이드"]
-        S --> W3["숫자 판독<br/>쿨다운 · 경험치 OCR"]
-        W1 --> J["판정 루프<br/>증거 수집 · 오탐 게이트"]
+        C["Screen Share<br/>region select · viewport calibration"] --> S["Frame Sampling<br/>per-feature loops"]
+        S --> W1["Buff-slot Pipeline<br/>YOLO detect → deep matcher"]
+        S --> W2["Rune Detection<br/>CNN cascade"]
+        S --> W3["Digit Readers<br/>cooldown · EXP OCR"]
+        W1 --> J["Judgment Loop<br/>evidence · false-positive gates"]
         W2 --> J
         W3 --> J
-        J --> A["알림 스케줄러"]
-        A --> O1["사운드 알림"]
-        A --> O2["PiP 타이머"]
+        J --> A["Alert Scheduler"]
+        A --> O1["Sound Alerts"]
+        A --> O2["PiP Timer"]
     end
 ```
 
@@ -56,17 +58,17 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    U["사용자 브라우저"] -->|정적 호스팅| CF["Cloudflare Pages<br/>maple-timer.com"]
-    U -->|"원격 인식 (초대 베타)"| GW["API Gateway<br/>Node · Docker blue/green<br/>좌석 기반 동적 노드 배정"]
-    GW --> NA["Native 노드 1<br/>Mac Studio · CoreML"]
-    GW --> NB["Native 노드 2<br/>Mac mini · CoreML"]
-    DC["Discord Bot<br/>Workers · D1"] -.->|"베타 코드 발급 · 패치노트 자동 게시"| U
-    AD["Feedback Desk<br/>관리자 웹"] -.->|"문의 처리 · 운영 공지"| U
-    OBS["Grafana · Loki · Alloy"] -.->|관측| GW
+    U["User Browser"] -->|static hosting| CF["Cloudflare Pages<br/>maple-timer.com"]
+    U -->|"Remote Recognition"| GW["API Gateway<br/>Node · Docker blue/green<br/>seat-based node assignment"]
+    GW --> NA["Native Node 1<br/>Mac Studio · CoreML"]
+    GW --> NB["Native Node 2<br/>Mac mini · CoreML"]
+    DC["Discord Bot<br/>Workers · D1"] -.->|"invite codes · patch notes"| U
+    AD["Feedback Desk<br/>admin web"] -.->|"inquiries · notices"| U
+    OBS["Grafana · Loki · Alloy"] -.->|observability| GW
 ```
 
-- 원격 인식(베타)은 무거운 parser 연산만 전용 서버로 오프로드하는 선택
-  기능입니다. 네이티브 노드는 a/b 두 세대를 함께 띄워 **무중단 롤링
+- 원격 인식은 무거운 parser 연산만 전용 서버로 오프로드하는 선택
+  기능입니다(초대 코드 기반). 네이티브 노드는 a/b 두 세대를 함께 띄워 **무중단 롤링
   업데이트**로 교체됩니다.
 
 ## 주요 기능 요약
@@ -80,7 +82,7 @@ flowchart LR
 | 특수 코어 · 부스터 종료 | 쿨타임/판독 기반 카운트다운 알림 |
 | 울티마 스쿼드 알림 | 장비 가방·보스 등장 화면 감지 |
 | PiP 타이머 | 게임 위에 항상 떠 있는 소형 타이머 창 |
-| 원격 인식 (초대 베타) | 무거운 parser 연산만 전용 서버로 오프로드 — 저사양·CPU 모드 사용자 지원 |
+| 원격 인식 | 무거운 parser 연산만 전용 서버로 오프로드 — 저사양·CPU 모드 사용자 지원 (초대 코드 기반) |
 
 ## 시스템 구성 요소
 
@@ -89,7 +91,7 @@ flowchart LR
 | `maple-timer` | 웹앱 본체 (Cloudflare Pages) |
 | `maple-timer-api` | 원격 인식 게이트웨이 · 운영 API (Docker blue/green, 무중단 a/b 롤링) |
 | `maple-timer-remote-recognition` | 네이티브 추론 서비스 (CoreML/ONNX, 2노드 좌석 풀) |
-| `maple-timer-discord` | 커뮤니티 봇 — 베타 코드 발급, 패치노트 게시, 문의 채널 |
+| `maple-timer-discord` | 커뮤니티 봇 — 초대 코드 발급, 패치노트 자동 게시, 문의 채널 |
 | `maple-feedback-desk-operational-status` | 관리자 웹 — 문의·제보 처리, 운영 공지 편집 |
 | `maple-lab-*` | 모델 학습 랩 — 버프 아이콘 추출/매칭, 룬 감지, 쿨다운 OCR |
 
