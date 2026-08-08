@@ -46,6 +46,9 @@ flowchart LR
         J --> A["Alert Scheduler"]
         A --> O1["Sound Alerts"]
         A --> O2["PiP Timer"]
+        J -.-> EV["Evidence Archive<br/>recent frames · decisions"]
+        EV --> TS["Troubleshooter<br/>sample diagnosis · decision replay"]
+        EV --> RP["Report Packager"]
     end
 ```
 
@@ -63,6 +66,7 @@ flowchart LR
     subgraph CF["Cloudflare"]
         PAGES["Pages<br/>maple-timer.com"]
         FN["Pages Functions<br/>report API"]
+        ADMIN["Pages<br/>Feedback Desk (admin)"]
         BOT["Workers<br/>Discord Bot"]
         D1[("D1")]
         TUNNEL["Tunnel"]
@@ -93,6 +97,8 @@ flowchart LR
 
     DISCORD["Discord Community"]
 
+    OPERATOR["Operator"] -->|"review reports<br/>publish notices"| ADMIN
+    ADMIN --> FN
     APP -->|"load app & ONNX models"| PAGES
     APP -->|"send reports"| FN
     APP -->|"remote frames · VP8 1 Hz"| TUNNEL
@@ -133,6 +139,7 @@ flowchart LR
 | 특수 코어 · 부스터 종료 | 쿨타임/판독 기반 카운트다운 알림 |
 | 울티마 스쿼드 알림 | 장비 가방·보스 등장 화면 감지 |
 | PiP 타이머 | 게임 위에 항상 떠 있는 소형 타이머 창 |
+| 제보 · 트러블슈터 | 감지 결과 제보(동의 기반)와 저장 샘플 진단·판정 리플레이 도구 |
 | 원격 인식 | 무거운 parser 연산만 전용 서버로 오프로드 — 저사양·CPU 모드 사용자 지원 (초대 코드 기반) |
 
 ## 시스템 구성 요소
