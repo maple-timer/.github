@@ -15,7 +15,9 @@ Maple Timer는 메이플스토리 플레이 화면을 **브라우저 안에서 �
 
 ## 시연
 
-https://github.com/maple-timer/.github/raw/main/profile/demo.mp4
+![Maple Timer 시연](https://github.com/maple-timer/.github/raw/main/profile/demo.gif)
+
+> 원본 영상: [demo.mp4](https://github.com/maple-timer/.github/raw/main/profile/demo.mp4)
 
 ## 성과
 
